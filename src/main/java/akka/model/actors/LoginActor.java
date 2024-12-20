@@ -1,4 +1,4 @@
-//LoginActor.java
+//LoginActor.java--
 package akka.model.actors;
 
 import akka.actor.AbstractActor;
