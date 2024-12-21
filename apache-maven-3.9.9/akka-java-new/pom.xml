@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>akka-tutorial-first-java</groupId>
+    <artifactId>akka-actor</artifactId>
+    <packaging>jar</packaging>
+    <version>1.0-SNAPSHOT</version>
+    <description>Akka is a toolkit for building highly concurrent, distributed, and resilient message-driven applications for Java and Scala.</description>
+    <url>https://akka.io/</url>
+
+    <licenses>
+        <license>
+            <name>BUSL-1.1</name>
+            <url>https://raw.githubusercontent.com/akka/akka/v2.8.8/LICENSE</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <name>akka-actor</name>
+    <inceptionYear>2009</inceptionYear>
+    <organization>
+        <name>Lightbend Inc.</name>
+        <url>https://www.lightbend.com</url>
+    </organization>
+    <scm>
+        <url>https://github.com/akka/akka</url>
+        <connection>scm:git:https://github.com/akka/akka.git</connection>
+        <developerConnection>scm:git:git@github.com:akka/akka.git</developerConnection>
+    </scm>
+    <developers>
+        <developer>
+            <id>akka-contributors</id>
+            <name>Akka Contributors</name>
+            <url>https://github.com/akka/akka/graphs/contributors</url>
+            <email>akka.official@gmail.com</email>
+        </developer>
+    </developers>
+
+    <properties>
+        <info.apiURL>https://doc.akka.io/api/akka/2.6.20</info.apiURL> <!-- Update to the correct version -->
+    </properties>
+
+    <dependencies>
+        <!-- Scala Library -->
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>2.12.18</version> <!-- Ensure this matches your Scala version -->
+        </dependency>
+
+        <!-- Akka Actor (Classic API) -->
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-actor_2.12</artifactId>
+            <version>2.6.20</version> <!-- Update to the correct Akka version -->
+        </dependency>
+
+        <!-- Akka SLF4J Binding for Logging -->
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-slf4j_2.12</artifactId>
+            <version>2.6.20</version> <!-- Keep this version consistent -->
+        </dependency>
+
+        <!-- SLF4J API (for logging) -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.36</version> <!-- Update if needed -->
+        </dependency>
+
+        <!-- Optionally, add the testkit for Akka testing -->
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-testkit_2.12</artifactId>
+            <version>2.6.20</version> <!-- For testing Akka actors -->
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>java</goal>
+                    </goals>
+                    <configuration>
+                        <mainClass>akka.first.java.Pi</mainClass>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+
+</project>

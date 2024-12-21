@@ -1,6 +1,6 @@
 //ChangeStatusActor.java
 
-package akka.model.actors;
+package discord.akka.model.actors;
 
 import akka.actor.AbstractActor;
 import akka.actor.Props;
@@ -14,7 +14,6 @@ public class ChangeStatusActor extends AbstractActor {
     // Messages for this actor
     public static class ChangeStatusMessage {
         public final String newStatus;
-
         public ChangeStatusMessage(String newStatus) {
             this.newStatus = newStatus;
         }
