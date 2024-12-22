@@ -3,25 +3,24 @@ import akka.actor.ActorRef;
 import akka.actor.AbstractActor;
 import akka.actor.Props;
 
-import discord.akka.model.actors.ChangeStatusActor;
-
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
-
 public class ControllerActor extends AbstractActor {
     private final ActorRef loginActor;
-    private  final ActorRef changeStatusActor;
+    private final ActorRef changeStatusActor;
+    private final ActorRef profileActor;
     private final Scanner scanner = new Scanner(System.in);
 
     //Constructor
-    public ControllerActor(ActorRef loginActor, ActorRef changeStatusActor) {
+    public ControllerActor(ActorRef loginActor, ActorRef profileActor, ActorRef changeStatusActor) {
         this.loginActor = loginActor;
+        this.profileActor = profileActor;
         this.changeStatusActor = changeStatusActor;
     }
 
-    public static Props props(ActorRef loginActor, ActorRef changeStatusActor) {
-        return Props.create(ControllerActor.class, () -> new ControllerActor(loginActor, changeStatusActor));
+    public static Props props(ActorRef loginActor, ActorRef profileActor,ActorRef changeStatusActor) {
+        return Props.create(ControllerActor.class, () -> new ControllerActor(loginActor, profileActor, changeStatusActor));
     }
 
 
@@ -41,7 +40,7 @@ public class ControllerActor extends AbstractActor {
         int choice = 0;
         System.out.println("\n=== User: " + currentUsername + " | Status: " + currentStatus + " ===");
         System.out.println("Select a functionality:");
-        System.out.println("1. Create Profile");
+        System.out.println("1. Edit Profile");
         System.out.println("2. Change Status");
         System.out.println("3. Back to Main Menu");
         System.out.print("Enter your choice: ");
@@ -53,11 +52,11 @@ public class ControllerActor extends AbstractActor {
         switch (choice) {
             case 1:
                 // Handle Profile creation (if needed, can be added later)
-                System.out.println("Profile creation is not implemented yet.");
+                profileActor.tell(new ProfileActor.UpdateProfileMessage(currentUsername,"", "", "", "", ""), getSelf());
                 break;
             case 2:
                 // Change Status
-                changeUserStatus(currentUsername, currentStatus);
+                changeUserStatus(currentUsername);
                 break;
             case 3:
                 // Back to Main Menu
@@ -69,21 +68,20 @@ public class ControllerActor extends AbstractActor {
         }
     }
 
-    private void changeUserStatus(String currentUsername, String currentStatus) {
+    private void changeUserStatus(String currentUsername) {
         System.out.println("\nAvailable statuses: Online, Idle, Do Not Disturb, Invisible");
-        String newStatus = "";
         boolean validStatus = false;
         while (!validStatus) {
             System.out.print("Enter your new status: ");
-            newStatus = scanner.nextLine();
+            String currentStatus = scanner.nextLine();
             // Check if the status is valid
-            if (newStatus.equalsIgnoreCase("Online") ||
-                    newStatus.equalsIgnoreCase("Idle") ||
-                    newStatus.equalsIgnoreCase("Do Not Disturb") ||
-                    newStatus.equalsIgnoreCase("Invisible")) {
+            if (currentStatus.equalsIgnoreCase("Online") ||
+                    currentStatus.equalsIgnoreCase("Idle") ||
+                    currentStatus.equalsIgnoreCase("Do Not Disturb") ||
+                    currentStatus.equalsIgnoreCase("Invisible")) {
                 validStatus = true;
                 // Send the message to ChangeStatusActor
-                changeStatusActor.tell(new ChangeStatusActor.ChangeStatusMessage(true,currentUsername, "", newStatus), getSelf());
+                changeStatusActor.tell(new ChangeStatusActor.ChangeStatusMessage(true,currentUsername, "", currentStatus), getSelf());
             } else {
                 System.out.println("Invalid status! Please choose from: Online, Idle, Do Not Disturb, Invisible.");
             }
@@ -145,6 +143,14 @@ public class ControllerActor extends AbstractActor {
                     if (statusResponse.success) {
                         System.out.println(statusResponse.message);
                         loginSuccessful(statusResponse.username, statusResponse.newStatus);
+                    }
+                })
+                .match(ProfileActor.ProfileResponse.class, profileResponse -> {
+                    if (profileResponse.success) {
+                        System.out.println(profileResponse.message);
+                        loginSuccessful(profileResponse.profile.displayName, profileResponse.status);
+                    } else {
+                        System.out.println("Profile update failed: " + profileResponse.message);
                     }
                 })
                 .build();
