@@ -2,6 +2,7 @@ package discord.akka.model;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
+import discord.akka.model.actors.ChangeStatusActor;
 import discord.akka.model.actors.LoginActor;
 import discord.akka.model.actors.ControllerActor;
 
@@ -13,9 +14,10 @@ public class Main {
 
         // Create LoginActor
         ActorRef loginActor = system.actorOf(LoginActor.props(), "loginActor");
+        ActorRef changeStatusActor = system.actorOf(ChangeStatusActor.props(), "changeStatusActor");
 
         // Create a controller actor to handle user interaction
-        ActorRef controllerActor = system.actorOf(ControllerActor.props(loginActor), "controllerActor");
+        ActorRef controllerActor = system.actorOf(ControllerActor.props(loginActor, changeStatusActor), "controllerActor");
 
         // Start the application loop
         controllerActor.tell(new ControllerActor.StartInteraction(), ActorRef.noSender());

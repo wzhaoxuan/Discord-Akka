@@ -14,6 +14,7 @@ public class ChangeStatusActor extends AbstractActor {
     // Messages for this actor
     public static class ChangeStatusMessage {
         public final String newStatus;
+
         public ChangeStatusMessage(String newStatus) {
             this.newStatus = newStatus;
         }
