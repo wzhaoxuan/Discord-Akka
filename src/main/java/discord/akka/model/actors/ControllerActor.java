@@ -83,7 +83,7 @@ public class ControllerActor extends AbstractActor {
                     newStatus.equalsIgnoreCase("Invisible")) {
                 validStatus = true;
                 // Send the message to ChangeStatusActor
-                changeStatusActor.tell(new ChangeStatusActor.ChangeStatusMessage(newStatus), getSelf());
+                changeStatusActor.tell(new ChangeStatusActor.ChangeStatusMessage(true,currentUsername, "", newStatus), getSelf());
             } else {
                 System.out.println("Invalid status! Please choose from: Online, Idle, Do Not Disturb, Invisible.");
             }
@@ -141,9 +141,10 @@ public class ControllerActor extends AbstractActor {
                         loginSuccessful(response.username, response.status);
                     }
                 })
-                .match(ChangeStatusActor.StatusResponse.class, statusResponse ->{
+                .match(ChangeStatusActor.ChangeStatusMessage.class, statusResponse ->{
                     if (statusResponse.success) {
                         System.out.println(statusResponse.message);
+                        loginSuccessful(statusResponse.username, statusResponse.newStatus);
                     }
                 })
                 .build();
