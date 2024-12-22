@@ -3,6 +3,7 @@ package discord.akka.model.actors;
 import akka.actor.AbstractActor;
 import akka.actor.Props;
 
+
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -11,6 +12,9 @@ import java.util.Map;
 public class LoginActor extends AbstractActor {
     private final Map<String, String> userCredentials = new HashMap<>();
     private static final String FILE_NAME = "discord_user.txt";
+    private static final String DEFAULT_USER = "User";
+    private static final String DEFAULT_PASSWORD = "password123";
+    private static final String DEFAULT_STATUS = "Online";
 
     public static Props props() {
         return Props.create(LoginActor.class);
@@ -40,10 +44,15 @@ public class LoginActor extends AbstractActor {
     public static class ResponseMessage {
         public final boolean success;
         public final String message;
+        public final String username;
+        public final String status;
 
-        public ResponseMessage(boolean success, String message) {
+
+        public ResponseMessage(boolean success, String message, String username, String status) {
             this.success = success;
             this.message = message;
+            this.username = username;
+            this.status = status;
         }
     }
 
@@ -53,12 +62,12 @@ public class LoginActor extends AbstractActor {
                 .match(LoginMessage.class, login -> {
                     if (userCredentials.containsKey(login.username)) {
                         if (userCredentials.get(login.username).equals(login.password)) {
-                            getSender().tell(new ResponseMessage(true, "Login Successful!"), getSelf());
+                            getSender().tell(new ResponseMessage(true, "Login Successful!", DEFAULT_USER, DEFAULT_STATUS), getSelf());
                         } else {
-                            getSender().tell(new ResponseMessage(false, "Incorrect password. Please try again."), getSelf());
+                            getSender().tell(new ResponseMessage(false, "Incorrect password. Please try again.", null, null), getSelf());
                         }
                     } else {
-                        getSender().tell(new ResponseMessage(false, "Username not found. Please sign up."), getSelf());
+                        getSender().tell(new ResponseMessage(false, "Username not found. Please sign up.", null, null), getSelf());
                     }
                 })
                 .match(SignupMessage.class, signup -> {
@@ -67,10 +76,10 @@ public class LoginActor extends AbstractActor {
                         System.out.println(entry);
                     }
                     if (userCredentials.containsKey(signup.username)) {
-                        getSender().tell(new ResponseMessage(false, "Username already exists. Please choose another."), getSelf());
+                        getSender().tell(new ResponseMessage(false, "Username already exists. Please choose another.", null, null), getSelf());
                     } else {
                         userCredentials.put(signup.username, signup.password);
-                        getSender().tell(new ResponseMessage(true, "Signup Successful! You can now log in."), getSelf());
+                        getSender().tell(new ResponseMessage(true, "Signup Successful! You can now log in.", signup.username, DEFAULT_STATUS), getSelf());
                     }
                 })
                 .build();
@@ -89,8 +98,6 @@ public class LoginActor extends AbstractActor {
 
     private void loadCredentialsFromFile() {
         File file = new File(FILE_NAME);
-        // Ensure parent directories exist
-        file.getParentFile().mkdirs();
         if (file.exists()) {
             try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
                 String line;
@@ -103,6 +110,17 @@ public class LoginActor extends AbstractActor {
             } catch (IOException e) {
                 System.err.println("Error loading user credentials: " + e.getMessage());
             }
+        }
+    }
+
+    @Override
+    public void preStart() throws Exception {
+        // Load existing credentials from the file
+        loadCredentialsFromFile();
+
+        // Add a default user (if none exists)
+        if (userCredentials.isEmpty()) {
+            userCredentials.put(DEFAULT_USER, DEFAULT_PASSWORD);
         }
     }
 }

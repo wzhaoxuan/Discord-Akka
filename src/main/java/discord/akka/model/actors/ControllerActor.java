@@ -2,7 +2,6 @@ package discord.akka.model.actors;
 import akka.actor.ActorRef;
 import akka.actor.AbstractActor;
 import akka.actor.Props;
-import discord.akka.model.Main;
 
 import java.util.InputMismatchException;
 import java.util.Scanner;
@@ -27,6 +26,15 @@ public class ControllerActor extends AbstractActor {
         System.out.println("\nWelcome to Discord Application!");
         System.out.println("1. Login");
         System.out.println("2. Signup");
+        System.out.println("3. Exit");
+        System.out.print("Enter your choice: ");
+    }
+
+    private void loginSuccessful(String currentUsername, String currentStatus) {
+        System.out.println("\n=== User: " + currentUsername + " | Status: " + currentStatus + " ===");
+        System.out.println("Select a functionality:");
+        System.out.println("1. Create Profile");
+        System.out.println("2. Change Status");
         System.out.println("3. Exit");
         System.out.print("Enter your choice: ");
     }
@@ -71,10 +79,15 @@ public class ControllerActor extends AbstractActor {
                 })
                 .match(LoginActor.ResponseMessage.class, response -> {
                     // Handle the response from LoginActor
-                    System.out.println(response.message);
-
-                    // Restart the interaction
-                    self().tell(new ControllerActor.StartInteraction(), getSelf());
+                    if(!response.success){
+                        System.out.println(response.message);
+                        // Restart the interaction
+                        self().tell(new ControllerActor.StartInteraction(), getSelf());
+                    }
+                    else{
+                        System.out.println(response.message);
+                        loginSuccessful(response.username, response.status);
+                    }
                 })
                 .build();
     }
