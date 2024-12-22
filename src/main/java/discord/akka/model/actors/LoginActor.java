@@ -3,12 +3,14 @@ package discord.akka.model.actors;
 import akka.actor.AbstractActor;
 import akka.actor.Props;
 
+import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 
 // Actor for handling login functionality
 public class LoginActor extends AbstractActor {
     private final Map<String, String> userCredentials = new HashMap<>();
+    private static final String FILE_NAME = "discord_user.txt";
 
     public static Props props() {
         return Props.create(LoginActor.class);
@@ -60,6 +62,10 @@ public class LoginActor extends AbstractActor {
                     }
                 })
                 .match(SignupMessage.class, signup -> {
+                    System.out.println("Current users in Discord");
+                    for(String entry : userCredentials.keySet()) {
+                        System.out.println(entry);
+                    }
                     if (userCredentials.containsKey(signup.username)) {
                         getSender().tell(new ResponseMessage(false, "Username already exists. Please choose another."), getSelf());
                     } else {
@@ -68,5 +74,35 @@ public class LoginActor extends AbstractActor {
                     }
                 })
                 .build();
+    }
+
+    private void saveUserCredentials() {
+        try(BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_NAME))) {
+            for(Map.Entry<String, String> entry : userCredentials.entrySet()) {
+                bw.write(entry.getKey() + ":" + entry.getValue());
+                bw.newLine();
+            }
+        } catch(IOException e) {
+            System.err.println("Error Saving user credentials: " +e.getMessage());
+        }
+    }
+
+    private void loadCredentialsFromFile() {
+        File file = new File(FILE_NAME);
+        // Ensure parent directories exist
+        file.getParentFile().mkdirs();
+        if (file.exists()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String[] parts = line.split(":");
+                    if (parts.length == 2) {
+                        userCredentials.put(parts[0], parts[1]);
+                    }
+                }
+            } catch (IOException e) {
+                System.err.println("Error loading user credentials: " + e.getMessage());
+            }
+        }
     }
 }
