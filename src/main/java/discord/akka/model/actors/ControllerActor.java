@@ -112,7 +112,6 @@ public class ControllerActor extends AbstractActor {
                         // Signup response
                         System.out.println(response.message);
                         self().tell(new StartInteraction(), getSelf()); // Prompt the user to log in
-//                        loginSuccessful(response.username, response.status);
                     } else if (!response.success) {
                         // Login failed
                         System.out.println(response.message);

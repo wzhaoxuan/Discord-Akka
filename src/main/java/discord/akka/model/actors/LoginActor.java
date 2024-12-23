@@ -80,6 +80,7 @@ public class LoginActor extends AbstractActor {
                         getSender().tell(new ResponseMessage(false, false,"Username already exists. Please choose another.", null, null), getSelf());
                     } else {
                         userCredentials.put(signup.username, signup.password);
+                        saveUserCredentials();
                         getSender().tell(new ResponseMessage(true, true,"Signup Successful! You can now log in.", signup.username, DEFAULT_STATUS), getSelf());
                     }
                     for(String entry : userCredentials.keySet()) {
