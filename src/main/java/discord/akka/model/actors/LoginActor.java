@@ -42,13 +42,15 @@ public class LoginActor extends AbstractActor {
 
     public static class ResponseMessage {
         public final boolean success;
+        public final boolean isSignup;
         public final String message;
         public final String username;
         public final String status;
 
 
-        public ResponseMessage(boolean success, String message, String username, String status) {
+        public ResponseMessage(boolean success, boolean isSignup, String message, String username, String status) {
             this.success = success;
+            this.isSignup = isSignup;
             this.message = message;
             this.username = username;
             this.status = status;
@@ -61,24 +63,27 @@ public class LoginActor extends AbstractActor {
                 .match(LoginMessage.class, login -> {
                     if (userCredentials.containsKey(login.username)) {
                         if (userCredentials.get(login.username).equals(login.password)) {
-                            getSender().tell(new ResponseMessage(true, "Login Successful!", DEFAULT_USER, DEFAULT_STATUS), getSelf());
+                            getSender().tell(new ResponseMessage(true, false, "Login Successful!", login.username, DEFAULT_STATUS), getSelf());
                         } else {
-                            getSender().tell(new ResponseMessage(false, "Incorrect password. Please try again.", null, null), getSelf());
+                            getSender().tell(new ResponseMessage(false, false, "Incorrect password. Please try again.", null, null), getSelf());
                         }
                     } else {
-                        getSender().tell(new ResponseMessage(false, "Username not found. Please sign up.", null, null), getSelf());
+                        getSender().tell(new ResponseMessage(false, true,"Username not found. Please sign up.", null, null), getSelf());
+                    }
+                    for(String entry : userCredentials.keySet()) {
+                        System.out.println(entry);
                     }
                 })
                 .match(SignupMessage.class, signup -> {
                     System.out.println("Current users in Discord");
-                    for(String entry : userCredentials.keySet()) {
-                        System.out.println(entry);
-                    }
                     if (userCredentials.containsKey(signup.username)) {
-                        getSender().tell(new ResponseMessage(false, "Username already exists. Please choose another.", null, null), getSelf());
+                        getSender().tell(new ResponseMessage(false, false,"Username already exists. Please choose another.", null, null), getSelf());
                     } else {
                         userCredentials.put(signup.username, signup.password);
-                        getSender().tell(new ResponseMessage(true, "Signup Successful! You can now log in.", signup.username, DEFAULT_STATUS), getSelf());
+                        getSender().tell(new ResponseMessage(true, true,"Signup Successful! You can now log in.", signup.username, DEFAULT_STATUS), getSelf());
+                    }
+                    for(String entry : userCredentials.keySet()) {
+                        System.out.println(entry);
                     }
                 })
                 .build();

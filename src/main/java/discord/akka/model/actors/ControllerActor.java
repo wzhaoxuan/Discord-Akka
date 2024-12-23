@@ -1,4 +1,5 @@
 package discord.akka.model.actors;
+
 import akka.actor.ActorRef;
 import akka.actor.AbstractActor;
 import akka.actor.Props;
@@ -12,21 +13,18 @@ public class ControllerActor extends AbstractActor {
     private final ActorRef profileActor;
     private final Scanner scanner = new Scanner(System.in);
 
-    //Constructor
+    // Constructor
     public ControllerActor(ActorRef loginActor, ActorRef profileActor, ActorRef changeStatusActor) {
         this.loginActor = loginActor;
         this.profileActor = profileActor;
         this.changeStatusActor = changeStatusActor;
     }
 
-    public static Props props(ActorRef loginActor, ActorRef profileActor,ActorRef changeStatusActor) {
+    public static Props props(ActorRef loginActor, ActorRef profileActor, ActorRef changeStatusActor) {
         return Props.create(ControllerActor.class, () -> new ControllerActor(loginActor, profileActor, changeStatusActor));
     }
 
-
-    public static class StartInteraction{
-
-    }
+    public static class StartInteraction {}
 
     private void displayMenu() {
         System.out.println("\nWelcome to Discord Application!");
@@ -41,22 +39,24 @@ public class ControllerActor extends AbstractActor {
         System.out.println("\n=== User: " + currentUsername + " | Status: " + currentStatus + " ===");
         System.out.println("Select a functionality:");
         System.out.println("1. Edit Profile");
-        System.out.println("2. Change Status");
+        System.out.println("2. View Profile");
         System.out.println("3. Back to Main Menu");
         System.out.print("Enter your choice: ");
+
         try {
-             choice = Integer.parseInt(scanner.nextLine());
+            choice = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
             System.out.println("Invalid input. Please enter a valid number (1 or 2).");
         }
+
         switch (choice) {
             case 1:
-                // Handle Profile creation (if needed, can be added later)
-                profileActor.tell(new ProfileActor.UpdateProfileMessage(currentUsername,"", "", "", "", ""), getSelf());
+                // Edit Profile first
+                profileActor.tell(new ProfileActor.UpdateProfileMessage(currentUsername, "", "", "", ""), getSelf());
                 break;
             case 2:
-                // Change Status
-                changeUserStatus(currentUsername);
+                // View Profile
+                profileActor.tell(new ProfileActor.GetProfileMessage(currentUsername), getSelf());
                 break;
             case 3:
                 // Back to Main Menu
@@ -68,41 +68,20 @@ public class ControllerActor extends AbstractActor {
         }
     }
 
-    private void changeUserStatus(String currentUsername) {
-        System.out.println("\nAvailable statuses: Online, Idle, Do Not Disturb, Invisible");
-        boolean validStatus = false;
-        while (!validStatus) {
-            System.out.print("Enter your new status: ");
-            String currentStatus = scanner.nextLine();
-            // Check if the status is valid
-            if (currentStatus.equalsIgnoreCase("Online") ||
-                    currentStatus.equalsIgnoreCase("Idle") ||
-                    currentStatus.equalsIgnoreCase("Do Not Disturb") ||
-                    currentStatus.equalsIgnoreCase("Invisible")) {
-                validStatus = true;
-                // Send the message to ChangeStatusActor
-                changeStatusActor.tell(new ChangeStatusActor.ChangeStatusMessage(true,currentUsername, "", currentStatus), getSelf());
-            } else {
-                System.out.println("Invalid status! Please choose from: Online, Idle, Do Not Disturb, Invisible.");
-            }
-        }
-    }
-
-
     @Override
     public Receive createReceive() {
         return receiveBuilder()
                 .match(StartInteraction.class, msg -> {
                     displayMenu();
                     int choice = 0;
-                    try{
+                    try {
                         choice = scanner.nextInt();
                         scanner.nextLine(); // Consume newline
-                    } catch(InputMismatchException e){
+                    } catch (InputMismatchException e) {
                         System.out.println("Please enter an Integer");
                         scanner.nextLine();
                         self().tell(new StartInteraction(), getSelf());
-                        return; //Skip further processing
+                        return; // Skip further processing
                     }
 
                     if (choice == 1) {
@@ -129,30 +108,63 @@ public class ControllerActor extends AbstractActor {
                 })
                 .match(LoginActor.ResponseMessage.class, response -> {
                     // Handle the response from LoginActor
-                    if(!response.success){
+                    if (response.isSignup) {
+                        // Signup response
                         System.out.println(response.message);
-                        // Restart the interaction
+                        self().tell(new StartInteraction(), getSelf()); // Prompt the user to log in
+//                        loginSuccessful(response.username, response.status);
+                    } else if (!response.success) {
+                        // Login failed
+                        System.out.println(response.message);
                         self().tell(new StartInteraction(), getSelf());
-                    }
-                    else{
+                    } else {
+                        // Login successful
                         System.out.println(response.message);
-                        loginSuccessful(response.username, response.status);
-                    }
-                })
-                .match(ChangeStatusActor.ChangeStatusMessage.class, statusResponse ->{
-                    if (statusResponse.success) {
-                        System.out.println(statusResponse.message);
-                        loginSuccessful(statusResponse.username, statusResponse.newStatus);
+                        loginSuccessful(response.username, response.status);  // Show main menu after successful login
                     }
                 })
                 .match(ProfileActor.ProfileResponse.class, profileResponse -> {
                     if (profileResponse.success) {
                         System.out.println(profileResponse.message);
-                        loginSuccessful(profileResponse.profile.displayName, profileResponse.status);
+                        // After profile is updated, allow user to change status
+                        changeUserStatus(profileResponse.username);
                     } else {
                         System.out.println("Profile update failed: " + profileResponse.message);
                     }
                 })
+                .match(ProfileActor.Profile.class, profile -> {
+                    // This message is sent when viewing the profile.
+                    System.out.println("\n=== View Profile ===");
+                    System.out.println(profile);
+                    loginSuccessful(profile.username, profile.status);  // Return to main menu after viewing the profile
+                })
+                .match(ChangeStatusActor.ChangeStatusMessage.class, statusResponse -> {
+                    if (statusResponse.success) {
+                        System.out.println(statusResponse.message);
+                        loginSuccessful(statusResponse.username, statusResponse.newStatus);
+                    }
+                })
                 .build();
+    }
+
+    private void changeUserStatus(String currentUsername) {
+        System.out.println("\nAvailable statuses: Online, Idle, Do Not Disturb, Invisible");
+        boolean validStatus = false;
+        while (!validStatus) {
+            System.out.print("Enter your new status: ");
+            String currentStatus = scanner.nextLine();
+            // Check if the status is valid
+            if (currentStatus.equalsIgnoreCase("Online") ||
+                    currentStatus.equalsIgnoreCase("Idle") ||
+                    currentStatus.equalsIgnoreCase("Do Not Disturb") ||
+                    currentStatus.equalsIgnoreCase("Invisible")) {
+                validStatus = true;
+                // Send the message to ChangeStatusActor
+                changeStatusActor.tell(new ChangeStatusActor.ChangeStatusMessage(true, currentUsername, "Status changed to: ", currentStatus), getSelf());
+                profileActor.tell(new ProfileActor.UpdateStatusMessage(currentUsername, currentStatus), getSelf());
+            } else {
+                System.out.println("Invalid status! Please choose from: Online, Idle, Do Not Disturb, Invisible.");
+            }
+        }
     }
 }
