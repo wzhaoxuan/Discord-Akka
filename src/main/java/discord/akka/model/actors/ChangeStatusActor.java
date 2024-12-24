@@ -11,22 +11,18 @@ public class ChangeStatusActor extends AbstractActor {
         return Props.create(ChangeStatusActor.class);
     }
 
-    // Messages for this actor
+
     public static class ChangeStatusMessage {
+        public final boolean success;
+        public final String username;
+        public final String message;
         public final String newStatus;
 
-        public ChangeStatusMessage(String newStatus) {
-            this.newStatus = newStatus;
-        }
-    }
-
-    public static class StatusResponse {
-        public final boolean success;
-        public final String message;
-
-        public StatusResponse(boolean success, String message) {
+        public ChangeStatusMessage(boolean success, String username, String message, String newStatus) {
             this.success = success;
+            this.username = username;
             this.message = message;
+            this.newStatus = newStatus;
         }
     }
 
@@ -37,7 +33,7 @@ public class ChangeStatusActor extends AbstractActor {
         return receiveBuilder()
                 .match(ChangeStatusMessage.class, statusMsg -> {
                     currentStatus = statusMsg.newStatus;
-                    getSender().tell(new StatusResponse(true, "Status changed to: " + currentStatus), getSelf());
+                    getSender().tell(new ChangeStatusMessage(true, statusMsg.username, "Status changed to: " + currentStatus, statusMsg.newStatus), getSelf());
                 })
                 .build();
     }
