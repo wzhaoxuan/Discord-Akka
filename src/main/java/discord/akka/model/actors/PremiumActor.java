@@ -1,5 +1,4 @@
 package discord.akka.model.actors;
-
 import akka.actor.AbstractActor;
 import akka.actor.Props;
 
