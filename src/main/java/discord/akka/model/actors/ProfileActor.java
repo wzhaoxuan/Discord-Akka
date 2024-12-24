@@ -11,7 +11,6 @@ public class ProfileActor extends AbstractActor {
     private final Scanner scanner = new Scanner(System.in);
     private String currentUserName; // Store the current logged-in username
 
-
     // User Profile Class
     public static class Profile {
         public String username;
@@ -33,6 +32,7 @@ public class ProfileActor extends AbstractActor {
         @Override
         public String toString() {
             return "--Profile--" +
+                    "\nusername=" + username + '\'' +
                     "\npronouns='" + pronouns + '\'' +
                     "\naboutMe='" + aboutMe + '\'' +
                     "\navatar='" + avatar + '\'' +
@@ -100,11 +100,8 @@ public class ProfileActor extends AbstractActor {
     }
 
     private Profile getOrCreateProfile(String userName) {
-        Profile profile = userProfiles.get(userName);
-        if (profile == null) {
-            profile = new Profile(userName,"", "", "", "", "Online");
-            userProfiles.put(userName, profile); // Save the newly created profile
-        }
+        Profile profile = userProfiles.computeIfAbsent(userName, n -> new Profile(n, "", "", "", "", "Online"));
+        // Save the newly created profile
         return profile;
     }
 
@@ -139,37 +136,23 @@ public class ProfileActor extends AbstractActor {
 
         // Save the updated profile with the correct key
         userProfiles.put(currentUserName, currentProfile);
-
-        System.out.println("currentUserName = " + currentUserName);
-        System.out.println(userProfiles);
         return currentProfile;
     }
 
-    // Method to display all user profiles
-    private void displayProfile(String userName) {
-        Profile profile = userProfiles.get(userName);
-
-        if (profile != null) {
-            System.out.println("=== User: " + userName + " | Status: " + profile.status + " ===");
-            System.out.println(profile); // Print the profile details
-        } else {
-            profile = getOrCreateProfile(userName);
-            System.out.println(userName);
-            System.out.println(profile);
-        }
-    }
 
     @Override
     public Receive createReceive() {
         return receiveBuilder()
                 // When the GetProfileMessage is received, show the logged-in user's profile
                 .match(GetProfileMessage.class, msg -> {
+                    Profile profile = getOrCreateProfile(msg.userName);
                     this.currentUserName = msg.userName;
                     if (currentUserName != null && currentUserName.equals(msg.userName)) {
-                        displayProfile(currentUserName); // Display the current user's profile
+                        getSender().tell(profile, getSelf());
                     } else {
                         getSender().tell("No profile found for the logged-in user: " + msg.userName, getSelf());
                     }
+
                 })
 
                 // Handle the message to update a user's profile
@@ -194,7 +177,6 @@ public class ProfileActor extends AbstractActor {
                         if (profile != null) {
                             profile.status = msg.newStatus; // Update the status
                             userProfiles.put(currentUserName, profile);
-                            System.out.println("Status updated for user: " + currentUserName + " to " + msg.newStatus);
                         }
                     }
                 })

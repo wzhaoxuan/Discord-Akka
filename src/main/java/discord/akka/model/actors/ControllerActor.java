@@ -135,7 +135,7 @@ public class ControllerActor extends AbstractActor {
                     // This message is sent when viewing the profile.
                     System.out.println("\n=== View Profile ===");
                     System.out.println(profile);
-                    loginSuccessful(profile.username, profile.status);  // Return to main menu after viewing the profile
+                    loginSuccessful(profile.username, profile.status);// Return to main menu after viewing the profile
                 })
                 .match(ChangeStatusActor.ChangeStatusMessage.class, statusResponse -> {
                     if (statusResponse.success) {
