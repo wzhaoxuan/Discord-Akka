@@ -1,5 +1,3 @@
-//ChangeStatusActor.java
-
 package discord.akka.model.actors;
 
 import akka.actor.AbstractActor;
