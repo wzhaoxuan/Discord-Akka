@@ -11,17 +11,19 @@ public class ControllerActor extends AbstractActor {
     private final ActorRef loginActor;
     private final ActorRef changeStatusActor;
     private final ActorRef profileActor;
+    private final ActorRef premiumActor;
     private final Scanner scanner = new Scanner(System.in);
 
     // Constructor
-    public ControllerActor(ActorRef loginActor, ActorRef profileActor, ActorRef changeStatusActor) {
+    public ControllerActor(ActorRef loginActor, ActorRef profileActor, ActorRef changeStatusActor, ActorRef premiumActor) {
         this.loginActor = loginActor;
         this.profileActor = profileActor;
         this.changeStatusActor = changeStatusActor;
+        this.premiumActor = premiumActor;
     }
 
-    public static Props props(ActorRef loginActor, ActorRef profileActor, ActorRef changeStatusActor) {
-        return Props.create(ControllerActor.class, () -> new ControllerActor(loginActor, profileActor, changeStatusActor));
+    public static Props props(ActorRef loginActor, ActorRef profileActor, ActorRef changeStatusActor, ActorRef premiumActor) {
+        return Props.create(ControllerActor.class, () -> new ControllerActor(loginActor, profileActor, changeStatusActor, premiumActor));
     }
 
     public static class StartInteraction {}
@@ -40,13 +42,15 @@ public class ControllerActor extends AbstractActor {
         System.out.println("Select a functionality:");
         System.out.println("1. Edit Profile");
         System.out.println("2. View Profile");
-        System.out.println("3. Back to Main Menu");
+        System.out.println("3. Get Premium Profile");
+        System.out.println("4. Back to Main Menu");
         System.out.print("Enter your choice: ");
 
         try {
             choice = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
             System.out.println("Invalid input. Please enter a valid number (1 or 2).");
+            loginSuccessful(currentUsername, currentStatus);
         }
 
         switch (choice) {
@@ -59,6 +63,9 @@ public class ControllerActor extends AbstractActor {
                 profileActor.tell(new ProfileActor.GetProfileMessage(currentUsername), getSelf());
                 break;
             case 3:
+                premiumActor.tell(new PremiumActor.GetPremiumOptions(currentUsername, currentStatus), getSelf());
+                break;
+            case 4:
                 // Back to Main Menu
                 self().tell(new StartInteraction(), getSelf());
                 break;
@@ -141,6 +148,20 @@ public class ControllerActor extends AbstractActor {
                     if (statusResponse.success) {
                         System.out.println(statusResponse.message);
                         loginSuccessful(statusResponse.username, statusResponse.newStatus);
+                    }
+                })
+                .match(PremiumActor.GetPremiumOptions.class, msg -> {
+                    // Call PremiumActor to show the available options and ask for input
+                    premiumActor.tell(msg, getSelf());
+                })
+                .match(PremiumActor.SubscriptionResponse.class, response -> {
+                    if (response.success) {
+                        System.out.println("No Response");
+                        System.out.println(response.message);
+                        loginSuccessful(response.username, response.status);
+                    } else {
+                        System.out.println(response.message);
+                        self().tell(new StartInteraction(), getSelf());
                     }
                 })
                 .build();

@@ -19,25 +19,28 @@ public class ProfileActor extends AbstractActor {
         public String avatar;
         public String background;
         public String status; // New status field
+        public String premiumPlan;
 
-        public Profile(String username, String pronouns, String aboutMe, String avatar, String background, String status) {
+        public Profile(String username, String pronouns, String aboutMe, String avatar, String background, String status, String premiumPlan) {
             this.username = username;
             this.pronouns = pronouns;
             this.aboutMe = aboutMe;
             this.avatar = avatar;
             this.background = background;
             this.status = status; // Initialize status
+            this.premiumPlan = premiumPlan;
         }
 
         @Override
         public String toString() {
             return "--Profile--" +
-                    "\nusername=" + username + '\'' +
-                    "\npronouns='" + pronouns + '\'' +
-                    "\naboutMe='" + aboutMe + '\'' +
-                    "\navatar='" + avatar + '\'' +
-                    "\nbackground='" + background + '\'' +
-                    "\nstatus='" + status + '\''; // Include status in output
+                    "\nusername = " + username +
+                    "\npronouns = " + pronouns +
+                    "\naboutMe = " + aboutMe +
+                    "\navatar = " + avatar +
+                    "\nbackground = " + background +
+                    "\nstatus = " + status + // Include status in output
+                    "\npremiumPlan = " + premiumPlan;
         }
     }
 
@@ -100,7 +103,7 @@ public class ProfileActor extends AbstractActor {
     }
 
     private Profile getOrCreateProfile(String userName) {
-        Profile profile = userProfiles.computeIfAbsent(userName, n -> new Profile(n, "", "", "", "", "Online"));
+        Profile profile = userProfiles.computeIfAbsent(userName, n -> new Profile(n, "", "", "", "", "Online", "None"));
         // Save the newly created profile
         return profile;
     }
@@ -125,7 +128,7 @@ public class ProfileActor extends AbstractActor {
         Profile currentProfile = userProfiles.get(currentUserName);
         if (currentProfile == null) {
             // Create a new profile if not exists
-            currentProfile = new Profile(currentUserName, pronouns, aboutMe, avatar, background, "Online");
+            currentProfile = new Profile(currentUserName, pronouns, aboutMe, avatar, background, "Online", "None");
         } else {
             // Update the existing profile fields
             currentProfile.pronouns = pronouns;
@@ -139,6 +142,14 @@ public class ProfileActor extends AbstractActor {
         return currentProfile;
     }
 
+    // Method to update the premium plan of a user
+    private void updatePremiumPlan(String userName, String premiumPlan) {
+        Profile profile = userProfiles.get(userName);
+        if (profile != null) {
+            profile.premiumPlan = premiumPlan; // Update premium plan
+            userProfiles.put(userName, profile);
+        }
+    }
 
     @Override
     public Receive createReceive() {
@@ -179,6 +190,11 @@ public class ProfileActor extends AbstractActor {
                             userProfiles.put(currentUserName, profile);
                         }
                     }
+                })
+                .match(PremiumActor.SubscriptionResponse.class, msg -> {
+                    // Update the premium plan when the user subscribes
+                    updatePremiumPlan(msg.username, msg.plan);
+                    System.out.println("Updated " + msg.username + "'s profile with " + msg.plan + " subscription.");
                 })
                 .build();
     }
