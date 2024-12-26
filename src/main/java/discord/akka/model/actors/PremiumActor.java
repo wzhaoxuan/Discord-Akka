@@ -1,14 +1,21 @@
 package discord.akka.model.actors;
-import akka.actor.AbstractActor;
-import akka.actor.Props;
 
+import akka.actor.AbstractActor;
+import akka.actor.ActorRef;
+import akka.actor.Props;
 import java.util.Scanner;
 
 public class PremiumActor extends AbstractActor {
+    private final Scanner scanner = new Scanner(System.in);
+    private final ActorRef paymentActor;
+
+    public PremiumActor(ActorRef paymentActor) {
+        this.paymentActor = paymentActor;
+    }
 
     public static class GetPremiumOptions {
         public final String username;
-        public final String status; // Include status in the GetPremiumOptions message
+        public final String status;
 
         public GetPremiumOptions(String username, String status) {
             this.username = username;
@@ -18,7 +25,7 @@ public class PremiumActor extends AbstractActor {
 
     public static class SubscribePremium {
         public final String username;
-        public final int planNumber; // 1 for Premium Basic, 2 for Premium
+        public final int planNumber;
         public final String status;
 
         public SubscribePremium(String username, int planNumber, String status) {
@@ -44,8 +51,8 @@ public class PremiumActor extends AbstractActor {
         }
     }
 
-    public static Props props() {
-        return Props.create(PremiumActor.class, PremiumActor::new);
+    public static Props props(ActorRef paymentActor) {
+        return Props.create(PremiumActor.class, () -> new PremiumActor(paymentActor));
     }
 
     @Override
@@ -53,22 +60,22 @@ public class PremiumActor extends AbstractActor {
         return receiveBuilder()
                 .match(GetPremiumOptions.class, this::handleGetPremiumOptions)
                 .match(SubscribePremium.class, this::handleSubscribePremium)
-                .match(SubscriptionResponse.class, this::handleSubscriptionResponse)
+                .match(PaymentActor.PaymentResponse.class, response -> {
+                    getSender().tell(response, getSelf());
+                })
                 .build();
     }
 
-    // Handle the GetPremiumOptions message
     private void handleGetPremiumOptions(GetPremiumOptions msg) {
         displayPremiumPlans();
         int planNumber = getPlanNumberFromUser();
         if (planNumber != -1) {
-            self().tell(new SubscribePremium(msg.username, planNumber, msg.status), getSelf());
+            self().tell(new SubscribePremium(msg.username, planNumber, msg.status), getSender());
         } else {
             System.out.println("Invalid option! Please choose 1 or 2.");
         }
     }
 
-    // Display the available premium plans
     private void displayPremiumPlans() {
         System.out.println("Choose a premium plan:");
         System.out.println("1. Premium Basic (RM11.90/month)");
@@ -84,9 +91,7 @@ public class PremiumActor extends AbstractActor {
         System.out.println("   - Custom profiles and more!");
     }
 
-    // Prompt the user for a plan selection and return the plan number
     private int getPlanNumberFromUser() {
-        Scanner scanner = new Scanner(System.in);
         int planNumber = -1;
         boolean validInput = false;
 
@@ -106,18 +111,22 @@ public class PremiumActor extends AbstractActor {
         return planNumber;
     }
 
-    // Handle subscription to the selected premium plan
     private void handleSubscribePremium(SubscribePremium msg) {
         String plan = determinePlan(msg.planNumber);
         if (plan != null) {
-            System.out.println("Debug");
-            getSender().tell(new SubscriptionResponse(true, msg.username + " has successfully subscribed to " + plan + "!", msg.username, msg.status, plan), getSelf());
+            double amount = (plan.equals("Premium Basic")) ? 11.90 : 31.90;
+            paymentActor.tell(
+                    new PaymentActor.ProcessPaymentMessage(msg.username, plan, amount),
+                    getSender()
+            );
         } else {
-            getSender().tell(new SubscriptionResponse(false, "Invalid plan selected.", msg.username, msg.status,null), getSelf());
+            getSender().tell(
+                    new SubscriptionResponse(false, "Invalid plan selected.", msg.username, msg.status, null),
+                    getSelf()
+            );
         }
     }
 
-    // Determine the plan name based on the plan number
     private String determinePlan(int planNumber) {
         switch (planNumber) {
             case 1:
@@ -127,19 +136,6 @@ public class PremiumActor extends AbstractActor {
             default:
                 return null;
         }
-
     }
-
-    // Handle the SubscriptionResponse message and provide feedback to the user
-    private void handleSubscriptionResponse(SubscriptionResponse response) {
-        if (response.success) {
-            System.out.println(response.message);
-        } else {
-            System.out.println("Subscription failed: " + response.message);
-        }
-    }
-
 }
-
-
 

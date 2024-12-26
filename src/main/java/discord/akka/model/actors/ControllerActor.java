@@ -3,7 +3,6 @@ package discord.akka.model.actors;
 import akka.actor.ActorRef;
 import akka.actor.AbstractActor;
 import akka.actor.Props;
-
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
@@ -14,7 +13,6 @@ public class ControllerActor extends AbstractActor {
     private final ActorRef premiumActor;
     private final Scanner scanner = new Scanner(System.in);
 
-    // Constructor
     public ControllerActor(ActorRef loginActor, ActorRef profileActor, ActorRef changeStatusActor, ActorRef premiumActor) {
         this.loginActor = loginActor;
         this.profileActor = profileActor;
@@ -49,28 +47,27 @@ public class ControllerActor extends AbstractActor {
         try {
             choice = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Invalid input. Please enter a valid number (1 or 2).");
+            System.out.println("Invalid input. Please enter a valid number.");
             loginSuccessful(currentUsername, currentStatus);
+            return;
         }
 
         switch (choice) {
             case 1:
-                // Edit Profile first
                 profileActor.tell(new ProfileActor.UpdateProfileMessage(currentUsername, "", "", "", ""), getSelf());
                 break;
             case 2:
-                // View Profile
                 profileActor.tell(new ProfileActor.GetProfileMessage(currentUsername), getSelf());
                 break;
             case 3:
                 premiumActor.tell(new PremiumActor.GetPremiumOptions(currentUsername, currentStatus), getSelf());
                 break;
             case 4:
-                // Back to Main Menu
                 self().tell(new StartInteraction(), getSelf());
                 break;
             default:
                 System.out.println("Invalid option! Try again.");
+                loginSuccessful(currentUsername, currentStatus);
                 break;
         }
     }
@@ -82,67 +79,59 @@ public class ControllerActor extends AbstractActor {
                     displayMenu();
                     int choice = 0;
                     try {
-                        choice = scanner.nextInt();
-                        scanner.nextLine(); // Consume newline
-                    } catch (InputMismatchException e) {
-                        System.out.println("Please enter an Integer");
-                        scanner.nextLine();
+                        choice = Integer.parseInt(scanner.nextLine());
+                    } catch (NumberFormatException e) {
+                        System.out.println("Please enter a valid number");
                         self().tell(new StartInteraction(), getSelf());
-                        return; // Skip further processing
+                        return;
                     }
 
-                    if (choice == 1) {
-                        System.out.print("Enter username: ");
-                        String username = scanner.nextLine();
-                        System.out.print("Enter password: ");
-                        String password = scanner.nextLine();
-
-                        loginActor.tell(new LoginActor.LoginMessage(username, password), getSelf());
-                    } else if (choice == 2) {
-                        System.out.print("Choose a username: ");
-                        String username = scanner.nextLine();
-                        System.out.print("Choose a password: ");
-                        String password = scanner.nextLine();
-
-                        loginActor.tell(new LoginActor.SignupMessage(username, password), getSelf());
-                    } else if (choice == 3) {
-                        System.out.println("Exiting. Goodbye!");
-                        getContext().getSystem().terminate();
-                    } else {
-                        System.out.println("Invalid option. Try again.");
-                        self().tell(new StartInteraction(), getSelf()); // Restart the interaction
+                    switch (choice) {
+                        case 1:
+                            System.out.print("Enter username: ");
+                            String username = scanner.nextLine();
+                            System.out.print("Enter password: ");
+                            String password = scanner.nextLine();
+                            loginActor.tell(new LoginActor.LoginMessage(username, password), getSelf());
+                            break;
+                        case 2:
+                            System.out.print("Choose a username: ");
+                            username = scanner.nextLine();
+                            System.out.print("Choose a password: ");
+                            password = scanner.nextLine();
+                            loginActor.tell(new LoginActor.SignupMessage(username, password), getSelf());
+                            break;
+                        case 3:
+                            System.out.println("Exiting. Goodbye!");
+                            getContext().getSystem().terminate();
+                            break;
+                        default:
+                            System.out.println("Invalid option. Try again.");
+                            self().tell(new StartInteraction(), getSelf());
+                            break;
                     }
                 })
                 .match(LoginActor.ResponseMessage.class, response -> {
-                    // Handle the response from LoginActor
-                    if (response.isSignup) {
-                        // Signup response
-                        System.out.println(response.message);
-                        self().tell(new StartInteraction(), getSelf()); // Prompt the user to log in
-                    } else if (!response.success) {
-                        // Login failed
-                        System.out.println(response.message);
+                    System.out.println(response.message);
+                    if (response.isSignup || !response.success) {
                         self().tell(new StartInteraction(), getSelf());
                     } else {
-                        // Login successful
-                        System.out.println(response.message);
-                        loginSuccessful(response.username, response.status);  // Show main menu after successful login
+                        loginSuccessful(response.username, response.status);
                     }
                 })
                 .match(ProfileActor.ProfileResponse.class, profileResponse -> {
                     if (profileResponse.success) {
                         System.out.println(profileResponse.message);
-                        // After profile is updated, allow user to change status
                         changeUserStatus(profileResponse.username);
                     } else {
                         System.out.println("Profile update failed: " + profileResponse.message);
+                        loginSuccessful(profileResponse.username, "Online");
                     }
                 })
                 .match(ProfileActor.Profile.class, profile -> {
-                    // This message is sent when viewing the profile.
                     System.out.println("\n=== View Profile ===");
                     System.out.println(profile);
-                    loginSuccessful(profile.username, profile.status);// Return to main menu after viewing the profile
+                    loginSuccessful(profile.username, profile.status);
                 })
                 .match(ChangeStatusActor.ChangeStatusMessage.class, statusResponse -> {
                     if (statusResponse.success) {
@@ -150,18 +139,30 @@ public class ControllerActor extends AbstractActor {
                         loginSuccessful(statusResponse.username, statusResponse.newStatus);
                     }
                 })
-                .match(PremiumActor.GetPremiumOptions.class, msg -> {
-                    // Call PremiumActor to show the available options and ask for input
-                    premiumActor.tell(msg, getSelf());
-                })
-                .match(PremiumActor.SubscriptionResponse.class, response -> {
+                .match(PaymentActor.PaymentResponse.class, response -> {
                     if (response.success) {
-                        System.out.println("No Response");
                         System.out.println(response.message);
-                        loginSuccessful(response.username, response.status);
+                        // Forward the subscription information to ProfileActor
+                        profileActor.tell(
+                                new PremiumActor.SubscriptionResponse(
+                                        true,
+                                        response.message,
+                                        response.username,
+                                        "Online",
+                                        response.plan
+                                ),
+                                getSelf()
+                        );
+                        // Add a small delay to ensure profile update is processed
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        loginSuccessful(response.username, "Online");
                     } else {
-                        System.out.println(response.message);
-                        self().tell(new StartInteraction(), getSelf());
+                        System.out.println("Payment failed: " + response.message);
+                        loginSuccessful(response.username, "Online");
                     }
                 })
                 .build();
@@ -173,13 +174,11 @@ public class ControllerActor extends AbstractActor {
         while (!validStatus) {
             System.out.print("Enter your new status: ");
             String currentStatus = scanner.nextLine();
-            // Check if the status is valid
             if (currentStatus.equalsIgnoreCase("Online") ||
                     currentStatus.equalsIgnoreCase("Idle") ||
                     currentStatus.equalsIgnoreCase("Do Not Disturb") ||
                     currentStatus.equalsIgnoreCase("Invisible")) {
                 validStatus = true;
-                // Send the message to ChangeStatusActor
                 changeStatusActor.tell(new ChangeStatusActor.ChangeStatusMessage(true, currentUsername, "Status changed to: ", currentStatus), getSelf());
                 profileActor.tell(new ProfileActor.UpdateStatusMessage(currentUsername, currentStatus), getSelf());
             } else {

@@ -9,16 +9,15 @@ import java.util.Scanner;
 
 public class ProfileActor extends AbstractActor {
     private final Scanner scanner = new Scanner(System.in);
-    private String currentUserName; // Store the current logged-in username
+    private String currentUserName;
 
-    // User Profile Class
     public static class Profile {
         public String username;
         public String pronouns;
         public String aboutMe;
         public String avatar;
         public String background;
-        public String status; // New status field
+        public String status;
         public String premiumPlan;
 
         public Profile(String username, String pronouns, String aboutMe, String avatar, String background, String status, String premiumPlan) {
@@ -27,7 +26,7 @@ public class ProfileActor extends AbstractActor {
             this.aboutMe = aboutMe;
             this.avatar = avatar;
             this.background = background;
-            this.status = status; // Initialize status
+            this.status = status;
             this.premiumPlan = premiumPlan;
         }
 
@@ -39,15 +38,13 @@ public class ProfileActor extends AbstractActor {
                     "\naboutMe = " + aboutMe +
                     "\navatar = " + avatar +
                     "\nbackground = " + background +
-                    "\nstatus = " + status + // Include status in output
+                    "\nstatus = " + status +
                     "\npremiumPlan = " + premiumPlan;
         }
     }
 
-    // Map to store user profiles
     private final Map<String, Profile> userProfiles = new HashMap<>();
 
-    // Message class for updating profile fields
     public static class UpdateProfileMessage {
         public final String userName;
         public final String pronouns;
@@ -64,7 +61,6 @@ public class ProfileActor extends AbstractActor {
         }
     }
 
-    // Message class for confirming profile changes
     public static class ProfileResponse {
         public final boolean success;
         public final String message;
@@ -97,18 +93,14 @@ public class ProfileActor extends AbstractActor {
         }
     }
 
-    // Props method to create the ProfileActor
     public static Props props() {
         return Props.create(ProfileActor.class, ProfileActor::new);
     }
 
     private Profile getOrCreateProfile(String userName) {
-        Profile profile = userProfiles.computeIfAbsent(userName, n -> new Profile(n, "", "", "", "", "Online", "None"));
-        // Save the newly created profile
-        return profile;
+        return userProfiles.computeIfAbsent(userName, n -> new Profile(n, "", "", "", "", "Online", "None"));
     }
 
-    // Method to update a user's profile
     private Profile updateProfile(String currentUserName) {
         System.out.println("\n--- Update your profile details ---");
 
@@ -124,37 +116,40 @@ public class ProfileActor extends AbstractActor {
         System.out.print("Enter your background URL: ");
         String background = scanner.nextLine();
 
-        // Always use userName (currentUserName) as the key
         Profile currentProfile = userProfiles.get(currentUserName);
-        if (currentProfile == null) {
-            // Create a new profile if not exists
-            currentProfile = new Profile(currentUserName, pronouns, aboutMe, avatar, background, "Online", "None");
-        } else {
-            // Update the existing profile fields
-            currentProfile.pronouns = pronouns;
-            currentProfile.aboutMe = aboutMe;
-            currentProfile.avatar = avatar;
-            currentProfile.background = background;
-        }
+        String currentPremiumPlan = (currentProfile != null) ? currentProfile.premiumPlan : "None";
+        String currentStatus = (currentProfile != null) ? currentProfile.status : "Online";
 
-        // Save the updated profile with the correct key
-        userProfiles.put(currentUserName, currentProfile);
-        return currentProfile;
+        Profile updatedProfile = new Profile(currentUserName, pronouns, aboutMe, avatar, background, currentStatus, currentPremiumPlan);
+        userProfiles.put(currentUserName, updatedProfile);
+        return updatedProfile;
     }
 
-    // Method to update the premium plan of a user
     private void updatePremiumPlan(String userName, String premiumPlan) {
         Profile profile = userProfiles.get(userName);
         if (profile != null) {
-            profile.premiumPlan = premiumPlan; // Update premium plan
-            userProfiles.put(userName, profile);
+            System.out.println("Updating premium plan for user: " + userName + " to plan: " + premiumPlan);
+            Profile updatedProfile = new Profile(
+                    profile.username,
+                    profile.pronouns,
+                    profile.aboutMe,
+                    profile.avatar,
+                    profile.background,
+                    profile.status,
+                    premiumPlan
+            );
+            userProfiles.put(userName, updatedProfile);
+            System.out.println("Successfully updated premium plan for user: " + userName);
+        } else {
+            Profile newProfile = new Profile(userName, "", "", "", "", "Online", premiumPlan);
+            userProfiles.put(userName, newProfile);
+            System.out.println("Created new profile with premium plan for user: " + userName);
         }
     }
 
     @Override
     public Receive createReceive() {
         return receiveBuilder()
-                // When the GetProfileMessage is received, show the logged-in user's profile
                 .match(GetProfileMessage.class, msg -> {
                     Profile profile = getOrCreateProfile(msg.userName);
                     this.currentUserName = msg.userName;
@@ -163,10 +158,7 @@ public class ProfileActor extends AbstractActor {
                     } else {
                         getSender().tell("No profile found for the logged-in user: " + msg.userName, getSelf());
                     }
-
                 })
-
-                // Handle the message to update a user's profile
                 .match(UpdateProfileMessage.class, msg -> {
                     this.currentUserName = msg.userName;
                     if (currentUserName == null) {
@@ -175,30 +167,33 @@ public class ProfileActor extends AbstractActor {
                     }
 
                     Profile updatedProfile = updateProfile(currentUserName);
-                    userProfiles.put(currentUserName, updatedProfile); // Ensure profile is stored
+                    userProfiles.put(currentUserName, updatedProfile);
 
                     getSender().tell(new ProfileResponse(true, "Profile updated successfully!", currentUserName, updatedProfile), getSelf());
                     System.out.println(updatedProfile);
                 })
                 .match(UpdateStatusMessage.class, msg -> {
                     this.currentUserName = msg.userName;
-                    // Handle the status update message
                     if (currentUserName != null) {
                         Profile profile = userProfiles.get(currentUserName);
                         if (profile != null) {
-                            profile.status = msg.newStatus; // Update the status
-                            userProfiles.put(currentUserName, profile);
+                            Profile updatedProfile = new Profile(
+                                    profile.username,
+                                    profile.pronouns,
+                                    profile.aboutMe,
+                                    profile.avatar,
+                                    profile.background,
+                                    msg.newStatus,
+                                    profile.premiumPlan
+                            );
+                            userProfiles.put(currentUserName, updatedProfile);
                         }
                     }
                 })
                 .match(PremiumActor.SubscriptionResponse.class, msg -> {
-                    // Update the premium plan when the user subscribes
+                    System.out.println("Received subscription update for user: " + msg.username);
                     updatePremiumPlan(msg.username, msg.plan);
-                    System.out.println("Updated " + msg.username + "'s profile with " + msg.plan + " subscription.");
                 })
                 .build();
     }
 }
-
-
-
