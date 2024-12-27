@@ -14,22 +14,26 @@ public class CallActor extends AbstractActor {
         public final String recipient;
         public final boolean cameraOn;
         public final boolean micOn;
+        public final String status;
 
-        public InitiateCallMessage(String caller, String recipient, boolean cameraOn, boolean micOn) {
+        public InitiateCallMessage(String caller, String recipient, boolean cameraOn, boolean micOn, String status) {
             this.caller = caller;
             this.recipient = recipient;
             this.cameraOn = cameraOn;
             this.micOn = micOn;
+            this.status = status;
         }
     }
 
     public static class CallResponse {
         public final String username;
         public final String message;
+        public final String status;
 
-        public CallResponse(String username, String message) {
+        public CallResponse(String username, String message, String status) {
             this.username = username;
             this.message = message;
+            this.status = status;
         }
     }
 
@@ -42,7 +46,7 @@ public class CallActor extends AbstractActor {
                     callDetails += "\nMicrophone: " + (msg.micOn ? "On" : "Off");
                     System.out.println(callDetails);
 
-                    getSender().tell(new CallResponse(msg.caller, "Call initiated successfully with " + msg.recipient), getSelf());
+                    getSender().tell(new CallResponse(msg.caller, "Call initiated successfully with " + msg.recipient, msg.status), getSelf());
                 })
                 .build();
     }

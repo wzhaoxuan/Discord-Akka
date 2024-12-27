@@ -73,16 +73,16 @@ public class ControllerActor extends AbstractActor {
                     profileActor.tell(new ProfileActor.GetProfileMessage(currentUsername), getSelf());
                     break;
                 case 3:
-                    addFriend(currentUsername);
+                    friendActor.tell(new FriendActor.AddFriendMessage(currentUsername, addFriend(), currentStatus),getSelf());
                     break;
                 case 4:
-                    createServer(currentUsername); // New
+                    createServer(currentUsername, currentStatus); // New
                     break;
                 case 5:
-                    initiateCall(currentUsername);
+                    initiateCall(currentUsername, currentStatus);
                     break;
                 case 6:
-                    messageSomeone(currentUsername);
+                    messageSomeone(currentUsername, currentStatus);
                     break;
                 case 7:
                     premiumActor.tell(new PremiumActor.GetPremiumOptions(currentUsername, currentStatus), getSelf());
@@ -100,23 +100,22 @@ public class ControllerActor extends AbstractActor {
             loginSuccessful(currentUsername, currentStatus);
         }
     }
-
-
-    private void addFriend(String currentUsername) {
+    private String addFriend() {
+        Scanner scanner = new Scanner(System.in);
         System.out.print("Enter the username of the friend to add: ");
-        String friendUsername = scanner.nextLine();
-        friendActor.tell(new FriendActor.AddFriendMessage(currentUsername, friendUsername), getSelf());
+        String friendName = scanner.nextLine();
+        return friendName;
     }
 
-    private void createServer(String currentUsername) {
+    private void createServer(String currentUsername, String currentStatus) {
         System.out.print("Enter a name for your server: ");
         String serverName = scanner.nextLine();
         System.out.print("Enter a description for your server: ");
         String serverDescription = scanner.nextLine();
-        serverActor.tell(new ServerActor.CreateServerMessage(currentUsername, serverName, serverDescription), getSelf());
+        serverActor.tell(new ServerActor.CreateServerMessage(currentUsername, serverName, serverDescription, currentStatus), getSelf());
     }
 
-    private void initiateCall(String currentUsername) {
+    private void initiateCall(String currentUsername, String currentStatus) {
         System.out.println("Starting a voice/video call:");
         System.out.print("Enter recipient's username: ");
         String recipient = scanner.nextLine();
@@ -125,16 +124,16 @@ public class ControllerActor extends AbstractActor {
         System.out.print("Enable microphone (yes/no)? ");
         boolean micOn = scanner.nextLine().equalsIgnoreCase("yes");
 
-        callActor.tell(new CallActor.InitiateCallMessage(currentUsername, recipient, cameraOn, micOn), getSelf());
+        callActor.tell(new CallActor.InitiateCallMessage(currentUsername, recipient, cameraOn, micOn, currentUsername), getSelf());
     }
 
-    private void messageSomeone(String currentUsername) {
+    private void messageSomeone(String currentUsername, String currentStatus) {
         System.out.print("Enter recipient's username: ");
         String recipient = scanner.nextLine();
         System.out.print("Enter your message: ");
         String message = scanner.nextLine();
 
-        messageActor.tell(new MessageActor.SendMessage(currentUsername, recipient, message), getSelf());
+        messageActor.tell(new MessageActor.SendMessage(currentUsername, recipient, message, currentStatus), getSelf());
     }
 
 
@@ -191,7 +190,7 @@ public class ControllerActor extends AbstractActor {
                         changeUserStatus(profileResponse.username);
                     } else {
                         System.out.println("Profile update failed: " + profileResponse.message);
-                        loginSuccessful(profileResponse.username, "Online");
+                        loginSuccessful(profileResponse.username, profileResponse.profile.status);
                     }
                 })
                 .match(ProfileActor.Profile.class, profile -> {
@@ -214,7 +213,7 @@ public class ControllerActor extends AbstractActor {
                                         true,
                                         response.message,
                                         response.username,
-                                        "Online",
+                                        response.status,
                                         response.plan
                                 ),
                                 getSelf()
@@ -225,27 +224,27 @@ public class ControllerActor extends AbstractActor {
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
-                        loginSuccessful(response.username, "Online");
+                        loginSuccessful(response.username, response.status);
                     } else {
                         System.out.println("Payment failed: " + response.message);
-                        loginSuccessful(response.username, "Online");
+                        loginSuccessful(response.username, response.status);
                     }
                 })
                 .match(FriendActor.FriendResponse.class, response -> {
                     System.out.println(response.message);
-                    loginSuccessful(response.username, "Online"); // Automatically return to the menu
+                    loginSuccessful(response.username, response.userStatus); // Automatically return to the menu
                 })
                 .match(ServerActor.ServerResponse.class, response -> {
                     System.out.println(response.message);
-                    loginSuccessful(response.username, "Online"); // Return to menu
+                    loginSuccessful(response.username, response.status); // Return to menu
                 })
                 .match(CallActor.CallResponse.class, response -> {
                     System.out.println(response.message);
-                    loginSuccessful(response.username, "Online"); // Return to menu
+                    loginSuccessful(response.username, response.status); // Return to menu
                 })
                 .match(MessageActor.MessageResponse.class, response -> {
                     System.out.println(response.message);
-                    loginSuccessful(response.sender, "Online"); // Return to menu
+                    loginSuccessful(response.sender, response.status); // Return to menu
                 })
 
                 .build();
