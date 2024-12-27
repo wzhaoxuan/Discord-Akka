@@ -11,18 +11,34 @@ public class ControllerActor extends AbstractActor {
     private final ActorRef changeStatusActor;
     private final ActorRef profileActor;
     private final ActorRef premiumActor;
+
+
+    private final ActorRef friendActor; // Add FriendActor
+    private final ActorRef serverActor;
+    private final ActorRef callActor;
+    private final ActorRef messageActor;
+
+
     private final Scanner scanner = new Scanner(System.in);
 
-    public ControllerActor(ActorRef loginActor, ActorRef profileActor, ActorRef changeStatusActor, ActorRef premiumActor) {
+    public ControllerActor(ActorRef loginActor, ActorRef profileActor, ActorRef changeStatusActor,
+                           ActorRef premiumActor, ActorRef friendActor, ActorRef serverActor,
+                           ActorRef callActor, ActorRef messageActor) {
         this.loginActor = loginActor;
         this.profileActor = profileActor;
         this.changeStatusActor = changeStatusActor;
         this.premiumActor = premiumActor;
+        this.friendActor = friendActor;
+        this.serverActor = serverActor;
+        this.callActor = callActor;
+        this.messageActor = messageActor;
     }
 
-    public static Props props(ActorRef loginActor, ActorRef profileActor, ActorRef changeStatusActor, ActorRef premiumActor) {
-        return Props.create(ControllerActor.class, () -> new ControllerActor(loginActor, profileActor, changeStatusActor, premiumActor));
+    public static Props props(ActorRef loginActor, ActorRef profileActor, ActorRef changeStatusActor, ActorRef premiumActor, ActorRef friendActor, ActorRef serverActor,
+                              ActorRef callActor, ActorRef messageActor) {
+        return Props.create(ControllerActor.class, () -> new ControllerActor(loginActor, profileActor, changeStatusActor, premiumActor, friendActor, serverActor, callActor, messageActor));
     }
+
 
     public static class StartInteraction {}
 
@@ -35,42 +51,92 @@ public class ControllerActor extends AbstractActor {
     }
 
     private void loginSuccessful(String currentUsername, String currentStatus) {
-        int choice = 0;
         System.out.println("\n=== User: " + currentUsername + " | Status: " + currentStatus + " ===");
         System.out.println("Select a functionality:");
         System.out.println("1. Edit Profile");
         System.out.println("2. View Profile");
-        System.out.println("3. Get Premium Profile");
-        System.out.println("4. Back to Main Menu");
+        System.out.println("3. Add Friend");
+        System.out.println("4. Create Server"); // New
+        System.out.println("5. Voice/Video Call"); // New
+        System.out.println("6. Message Someone"); // New
+        System.out.println("7. Get Premium Profile");
+        System.out.println("8. Back to Main Menu");
         System.out.print("Enter your choice: ");
 
         try {
-            choice = Integer.parseInt(scanner.nextLine());
+            int choice = Integer.parseInt(scanner.nextLine());
+            switch (choice) {
+                case 1:
+                    profileActor.tell(new ProfileActor.UpdateProfileMessage(currentUsername, "", "", "", ""), getSelf());
+                    break;
+                case 2:
+                    profileActor.tell(new ProfileActor.GetProfileMessage(currentUsername), getSelf());
+                    break;
+                case 3:
+                    addFriend(currentUsername);
+                    break;
+                case 4:
+                    createServer(currentUsername); // New
+                    break;
+                case 5:
+                    initiateCall(currentUsername);
+                    break;
+                case 6:
+                    messageSomeone(currentUsername);
+                    break;
+                case 7:
+                    premiumActor.tell(new PremiumActor.GetPremiumOptions(currentUsername, currentStatus), getSelf());
+                    break;
+                case 8:
+                    self().tell(new StartInteraction(), getSelf());
+                    break;
+                default:
+                    System.out.println("Invalid option! Try again.");
+                    loginSuccessful(currentUsername, currentStatus);
+                    break;
+            }
         } catch (NumberFormatException e) {
             System.out.println("Invalid input. Please enter a valid number.");
             loginSuccessful(currentUsername, currentStatus);
-            return;
-        }
-
-        switch (choice) {
-            case 1:
-                profileActor.tell(new ProfileActor.UpdateProfileMessage(currentUsername, "", "", "", ""), getSelf());
-                break;
-            case 2:
-                profileActor.tell(new ProfileActor.GetProfileMessage(currentUsername), getSelf());
-                break;
-            case 3:
-                premiumActor.tell(new PremiumActor.GetPremiumOptions(currentUsername, currentStatus), getSelf());
-                break;
-            case 4:
-                self().tell(new StartInteraction(), getSelf());
-                break;
-            default:
-                System.out.println("Invalid option! Try again.");
-                loginSuccessful(currentUsername, currentStatus);
-                break;
         }
     }
+
+
+    private void addFriend(String currentUsername) {
+        System.out.print("Enter the username of the friend to add: ");
+        String friendUsername = scanner.nextLine();
+        friendActor.tell(new FriendActor.AddFriendMessage(currentUsername, friendUsername), getSelf());
+    }
+
+    private void createServer(String currentUsername) {
+        System.out.print("Enter a name for your server: ");
+        String serverName = scanner.nextLine();
+        System.out.print("Enter a description for your server: ");
+        String serverDescription = scanner.nextLine();
+        serverActor.tell(new ServerActor.CreateServerMessage(currentUsername, serverName, serverDescription), getSelf());
+    }
+
+    private void initiateCall(String currentUsername) {
+        System.out.println("Starting a voice/video call:");
+        System.out.print("Enter recipient's username: ");
+        String recipient = scanner.nextLine();
+        System.out.print("Enable camera (yes/no)? ");
+        boolean cameraOn = scanner.nextLine().equalsIgnoreCase("yes");
+        System.out.print("Enable microphone (yes/no)? ");
+        boolean micOn = scanner.nextLine().equalsIgnoreCase("yes");
+
+        callActor.tell(new CallActor.InitiateCallMessage(currentUsername, recipient, cameraOn, micOn), getSelf());
+    }
+
+    private void messageSomeone(String currentUsername) {
+        System.out.print("Enter recipient's username: ");
+        String recipient = scanner.nextLine();
+        System.out.print("Enter your message: ");
+        String message = scanner.nextLine();
+
+        messageActor.tell(new MessageActor.SendMessage(currentUsername, recipient, message), getSelf());
+    }
+
 
     @Override
     public Receive createReceive() {
@@ -165,6 +231,23 @@ public class ControllerActor extends AbstractActor {
                         loginSuccessful(response.username, "Online");
                     }
                 })
+                .match(FriendActor.FriendResponse.class, response -> {
+                    System.out.println(response.message);
+                    loginSuccessful(response.username, "Online"); // Automatically return to the menu
+                })
+                .match(ServerActor.ServerResponse.class, response -> {
+                    System.out.println(response.message);
+                    loginSuccessful(response.username, "Online"); // Return to menu
+                })
+                .match(CallActor.CallResponse.class, response -> {
+                    System.out.println(response.message);
+                    loginSuccessful(response.username, "Online"); // Return to menu
+                })
+                .match(MessageActor.MessageResponse.class, response -> {
+                    System.out.println(response.message);
+                    loginSuccessful(response.sender, "Online"); // Return to menu
+                })
+
                 .build();
     }
 
