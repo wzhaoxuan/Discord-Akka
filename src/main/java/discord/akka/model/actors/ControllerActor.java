@@ -231,7 +231,13 @@ public class ControllerActor extends AbstractActor {
                     }
                 })
                 .match(FriendActor.FriendResponse.class, response -> {
-                    System.out.println(response.message);
+                    System.out.println(response.message); // Print message about adding the friend
+                    System.out.println("\n=== Updated Friends List ===");
+                    if (response.updatedFriendList.isEmpty()) {
+                        System.out.println("You have no friends added.");
+                    } else {
+                        response.updatedFriendList.forEach(friend -> System.out.println("- " + friend));
+                    }
                     loginSuccessful(response.username, response.userStatus); // Automatically return to the menu
                 })
                 .match(ServerActor.ServerResponse.class, response -> {

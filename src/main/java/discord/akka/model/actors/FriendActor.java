@@ -3,9 +3,11 @@ package discord.akka.model.actors;
 import akka.actor.AbstractActor;
 import akka.actor.Props;
 
-import java.util.Scanner;
+import java.util.ArrayList;
+import java.util.List;
 
 public class FriendActor extends AbstractActor {
+    private final List<String> friends = new ArrayList<>();
 
     public static Props props() {
         return Props.create(FriendActor.class, FriendActor::new);
@@ -27,12 +29,31 @@ public class FriendActor extends AbstractActor {
         public final String username;
         public final String message;
         public final String userStatus;
+        public final List<String> updatedFriendList; // Added field
 
-
-        public FriendResponse(String username, String message, String userStatus) {
+        public FriendResponse(String username, String message, String userStatus, List<String> updatedFriendList) {
             this.username = username;
             this.message = message;
             this.userStatus = userStatus;
+            this.updatedFriendList = updatedFriendList; // Store updated friend list
+        }
+    }
+
+    public static class GetFriendsListMessage {
+        public final String currentUser;
+
+        public GetFriendsListMessage(String currentUser) {
+            this.currentUser = currentUser;
+        }
+    }
+
+    public static class FriendsListResponse {
+        public final String username;
+        public final List<String> friends;
+
+        public FriendsListResponse(String username, List<String> friends) {
+            this.username = username;
+            this.friends = friends;
         }
     }
 
@@ -40,14 +61,28 @@ public class FriendActor extends AbstractActor {
     public Receive createReceive() {
         return receiveBuilder()
                 .match(AddFriendMessage.class, msg -> {
-//                    addFriend();
-                    // Simulate adding a friend
-                    System.out.println("Adding friend: " + msg.friendUser);
-                    getSender().tell(new FriendResponse(msg.currentUser, "Friend " + msg.friendUser + " added successfully!", msg.userStatus), getSelf());
+                    if (!friends.contains(msg.friendUser)) {
+                        friends.add(msg.friendUser);
+                        System.out.println("Adding friend: " + msg.friendUser);
+                        getSender().tell(
+                                new FriendResponse(
+                                        msg.currentUser,
+                                        "Friend " + msg.friendUser + " added successfully!",
+                                        msg.userStatus,
+                                        new ArrayList<>(friends) // Send updated friend list
+                                ),
+                                getSelf());
+                    } else {
+                        getSender().tell(
+                                new FriendResponse(
+                                        msg.currentUser,
+                                        "Friend " + msg.friendUser + " is already in your list!",
+                                        msg.userStatus,
+                                        new ArrayList<>(friends) // Send friend list
+                                ),
+                                getSelf());
+                    }
                 })
                 .build();
     }
-
-
-
 }
