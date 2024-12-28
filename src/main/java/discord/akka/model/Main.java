@@ -5,7 +5,7 @@ import akka.actor.ActorSystem;
 import discord.akka.model.actors.*;
 import java.util.Scanner;
 
-public class Main {l
+public class Main {
     public static void main(String[] args) {
         // Create ActorSystem
         ActorSystem system = ActorSystem.create("LoginSystem");
