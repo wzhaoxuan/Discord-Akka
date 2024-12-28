@@ -13,21 +13,25 @@ public class ServerActor extends AbstractActor {
         public final String owner;
         public final String serverName;
         public final String serverDescription;
+        public final String status;
 
-        public CreateServerMessage(String owner, String serverName, String serverDescription) {
+        public CreateServerMessage(String owner, String serverName, String serverDescription, String status) {
             this.owner = owner;
             this.serverName = serverName;
             this.serverDescription = serverDescription;
+            this.status = status;
         }
     }
 
     public static class ServerResponse {
         public final String username;
         public final String message;
+        public final String status;
 
-        public ServerResponse(String username, String message) {
+        public ServerResponse(String username, String message, String status) {
             this.username = username;
             this.message = message;
+            this.status = status;
         }
     }
 
@@ -36,7 +40,7 @@ public class ServerActor extends AbstractActor {
         return receiveBuilder()
                 .match(CreateServerMessage.class, msg -> {
                     System.out.println("Server created by " + msg.owner + ": " + msg.serverName);
-                    getSender().tell(new ServerResponse(msg.owner, "Server '" + msg.serverName + "' created successfully!"), getSelf());
+                    getSender().tell(new ServerResponse(msg.owner, "Server '" + msg.serverName + "' created successfully!", msg.status), getSelf());
                 })
                 .build();
     }

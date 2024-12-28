@@ -16,11 +16,13 @@ public class PaymentActor extends AbstractActor {
         public final String username;
         public final String plan;
         public final double amount;
+        public final String status;
 
-        public ProcessPaymentMessage(String username, String plan, double amount) {
+        public ProcessPaymentMessage(String username, String plan, double amount, String status) {
             this.username = username;
             this.plan = plan;
             this.amount = amount;
+            this.status = status;
         }
     }
 
@@ -29,12 +31,14 @@ public class PaymentActor extends AbstractActor {
         public final String message;
         public final String username;
         public final String plan;
+        public final String status;
 
-        public PaymentResponse(boolean success, String message, String username, String plan) {
+        public PaymentResponse(boolean success, String message, String username, String plan, String status) {
             this.success = success;
             this.message = message;
             this.username = username;
             this.plan = plan;
+            this.status = status;
         }
     }
 
@@ -72,7 +76,8 @@ public class PaymentActor extends AbstractActor {
                 new PaymentResponse(true,
                         "Payment successful! Your " + msg.plan + " subscription is now active.",
                         msg.username,
-                        msg.plan),
+                        msg.plan,
+                        msg.status),
                 getSelf()
         );
     }

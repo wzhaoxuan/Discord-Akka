@@ -15,8 +15,7 @@ public class Main {
         ActorRef profileActor = system.actorOf(ProfileActor.props(), "profileActor");
         ActorRef changeStatusActor = system.actorOf(ChangeStatusActor.props(), "changeStatusActor");
         ActorRef paymentActor = system.actorOf(PaymentActor.props(), "paymentActor");
-        ActorRef premiumActor = system.actorOf(PremiumActor.props(paymentActor), "premiumActor");
-
+        ActorRef premiumActor = system.actorOf(PremiumActor.props(paymentActor), "premiumActor");pull
         ActorRef friendActor = system.actorOf(FriendActor.props(), "friendActor"); // New FriendActor
         ActorRef serverActor = system.actorOf(ServerActor.props(), "serverActor");
         ActorRef callActor = system.actorOf(CallActor.props(), "callActor");

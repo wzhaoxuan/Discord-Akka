@@ -116,7 +116,7 @@ public class PremiumActor extends AbstractActor {
         if (plan != null) {
             double amount = (plan.equals("Premium Basic")) ? 11.90 : 31.90;
             paymentActor.tell(
-                    new PaymentActor.ProcessPaymentMessage(msg.username, plan, amount),
+                    new PaymentActor.ProcessPaymentMessage(msg.username, plan, amount, msg.status),
                     getSender()
             );
         } else {
