@@ -3,7 +3,11 @@ package discord.akka.model.actors;
 import akka.actor.AbstractActor;
 import akka.actor.Props;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ServerActor extends AbstractActor {
+    private final List<String> serverMembers = new ArrayList<>();
 
     public static Props props() {
         return Props.create(ServerActor.class);
@@ -20,6 +24,19 @@ public class ServerActor extends AbstractActor {
             this.serverName = serverName;
             this.serverDescription = serverDescription;
             this.status = status;
+        }
+    }
+
+    public static class AddFriendsToServerMessage {
+        public final String serverName;
+        public final List<String> friendsToAdd;
+        public final String owner;
+
+
+        public AddFriendsToServerMessage(String serverName, List<String> friendsToAdd, String owner) {
+            this.serverName = serverName;
+            this.friendsToAdd = friendsToAdd;
+            this.owner = owner;
         }
     }
 
@@ -40,7 +57,18 @@ public class ServerActor extends AbstractActor {
         return receiveBuilder()
                 .match(CreateServerMessage.class, msg -> {
                     System.out.println("Server created by " + msg.owner + ": " + msg.serverName);
-                    getSender().tell(new ServerResponse(msg.owner, "Server '" + msg.serverName + "' created successfully!", msg.status), getSelf());
+                    getSender().tell(
+                            new ServerResponse(msg.owner, "Server '" + msg.serverName + "' created successfully!", msg.status),
+                            getSelf()
+                    );
+                })
+                .match(AddFriendsToServerMessage.class, msg -> {
+                    serverMembers.addAll(msg.friendsToAdd);
+                    System.out.println("People that will be added to server '" + msg.serverName + "': " + msg.friendsToAdd);
+                    getSender().tell(
+                            new ServerResponse(msg.owner, "Friends added to server '" + msg.serverName + "' successfully!", "Server Updated"),
+                            getSelf()
+                    );
                 })
                 .build();
     }

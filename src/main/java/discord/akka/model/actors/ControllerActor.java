@@ -3,7 +3,10 @@ package discord.akka.model.actors;
 import akka.actor.ActorRef;
 import akka.actor.AbstractActor;
 import akka.actor.Props;
+
+import java.util.ArrayList;
 import java.util.InputMismatchException;
+import java.util.List;
 import java.util.Scanner;
 
 public class ControllerActor extends AbstractActor {
@@ -112,8 +115,51 @@ public class ControllerActor extends AbstractActor {
         String serverName = scanner.nextLine();
         System.out.print("Enter a description for your server: ");
         String serverDescription = scanner.nextLine();
+
+        // Create the server
         serverActor.tell(new ServerActor.CreateServerMessage(currentUsername, serverName, serverDescription, currentStatus), getSelf());
+
+        // Prompt user to add friends to the server
+        System.out.println("\nWould you like to add friends to your server? (yes/no)");
+        if (scanner.nextLine().equalsIgnoreCase("yes")) {
+            System.out.println("Fetching your friends list...");
+            friendActor.tell(new FriendActor.GetFriendsListMessage(currentUsername), getSelf());
+
+            // Handle the response from FriendActor
+            context().become(receiveBuilder()
+                    .match(FriendActor.FriendsListResponse.class, response -> {
+                        if (response.friends.isEmpty()) {
+                            System.out.println("You have no friends to add.");
+                        } else {
+                            System.out.println("\nYour Friends:");
+                            for (int i = 0; i < response.friends.size(); i++) {
+                                System.out.println((i + 1) + ". " + response.friends.get(i));
+                            }
+
+                            System.out.println("Enter the index numbers of the friends to add to the server, separated by commas:[Eg: 1,3]");
+                            String[] selections = scanner.nextLine().split(",");
+                            List<String> friendsToAdd = new ArrayList<>();
+                            for (String selection : selections) {
+                                try {
+                                    int index = Integer.parseInt(selection.trim()) - 1;
+                                    if (index >= 0 && index < response.friends.size()) {
+                                        friendsToAdd.add(response.friends.get(index));
+                                    }
+                                } catch (NumberFormatException e) {
+                                    System.out.println("Invalid input, skipping selection: " + selection);
+                                }
+                            }
+
+                            serverActor.tell(new ServerActor.AddFriendsToServerMessage(serverName, friendsToAdd, currentUsername), getSelf());
+                        }
+
+                        // Reset to default behavior
+                        context().unbecome();
+                    })
+                    .build().onMessage(), false);
+        }
     }
+
 
     private void initiateCall(String currentUsername, String currentStatus) {
         System.out.println("Starting a voice/video call:");
@@ -241,8 +287,8 @@ public class ControllerActor extends AbstractActor {
                     loginSuccessful(response.username, response.userStatus); // Automatically return to the menu
                 })
                 .match(ServerActor.ServerResponse.class, response -> {
-                    System.out.println(response.message);
-                    loginSuccessful(response.username, response.status); // Return to menu
+                    System.out.println(response.message); // Print response message
+                    loginSuccessful(response.username, response.status);
                 })
                 .match(CallActor.CallResponse.class, response -> {
                     System.out.println(response.message);

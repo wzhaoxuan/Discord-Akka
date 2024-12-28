@@ -63,7 +63,6 @@ public class FriendActor extends AbstractActor {
                 .match(AddFriendMessage.class, msg -> {
                     if (!friends.contains(msg.friendUser)) {
                         friends.add(msg.friendUser);
-                        System.out.println("Adding friend: " + msg.friendUser);
                         getSender().tell(
                                 new FriendResponse(
                                         msg.currentUser,
@@ -71,7 +70,8 @@ public class FriendActor extends AbstractActor {
                                         msg.userStatus,
                                         new ArrayList<>(friends) // Send updated friend list
                                 ),
-                                getSelf());
+                                getSelf()
+                        );
                     } else {
                         getSender().tell(
                                 new FriendResponse(
@@ -80,9 +80,20 @@ public class FriendActor extends AbstractActor {
                                         msg.userStatus,
                                         new ArrayList<>(friends) // Send friend list
                                 ),
-                                getSelf());
+                                getSelf()
+                        );
                     }
+                })
+                .match(GetFriendsListMessage.class, msg -> {
+                    getSender().tell(
+                            new FriendsListResponse(
+                                    msg.currentUser,
+                                    new ArrayList<>(friends) // Send current friend list
+                            ),
+                            getSelf()
+                    );
                 })
                 .build();
     }
+
 }
