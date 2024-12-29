@@ -85,7 +85,7 @@ public class ControllerActor extends AbstractActor {
                     callActor.tell(new CallActor.InitiateCallMessage(currentUsername, currentStatus), getSelf());
                     break;
                 case 6:
-                    messageSomeone(currentUsername, currentStatus);
+                    messageActor.tell(new MessageActor.MessageInteraction(currentUsername, currentStatus), getSelf());
                     break;
                 case 7:
                     premiumActor.tell(new PremiumActor.GetPremiumOptions(currentUsername, currentStatus), getSelf());
@@ -153,7 +153,7 @@ public class ControllerActor extends AbstractActor {
                             serverActor.tell(new ServerActor.AddFriendsToServerMessage(serverName, friendsToAdd, currentUsername), getSelf());
                         }
 
-                        // Reset to default behavior
+
                         context().unbecome();
                     })
                     .matchAny(message -> {
@@ -165,13 +165,11 @@ public class ControllerActor extends AbstractActor {
 
 
 
-    private void messageSomeone(String currentUsername, String currentStatus) {
-        System.out.print("Enter recipient's username: ");
-        String recipient = scanner.nextLine();
-        System.out.print("Enter your message: ");
-        String message = scanner.nextLine();
-        messageActor.tell(new MessageActor.SendMessage(currentUsername, recipient, message, currentStatus), getSelf());
-    }
+
+
+
+
+
 
 
     @Override
@@ -289,6 +287,9 @@ public class ControllerActor extends AbstractActor {
                     System.out.println(response.message); // Print response message
                     loginSuccessful(response.username, response.status);
                 })
+
+
+
                 .match(CallActor.CallDetails.class, details -> {
                     // Log or display the call details
                     System.out.println("Call initiated with " + details.recipient);
@@ -298,6 +299,9 @@ public class ControllerActor extends AbstractActor {
                     // Use the currentUsername and currentStatus from the details object
                     loginSuccessful(details.currentUsername, details.currentStatus);
                 })
+
+
+
 
                 .match(MessageActor.MessageResponse.class, response -> {
                     System.out.println(response.message);
