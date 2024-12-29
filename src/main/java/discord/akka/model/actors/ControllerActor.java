@@ -156,6 +156,8 @@ public class ControllerActor extends AbstractActor {
                         // Reset to default behavior
                         context().unbecome();
                     })
+                    .matchAny(message -> {
+                    })
                     .build().onMessage(), false);
         }
     }
