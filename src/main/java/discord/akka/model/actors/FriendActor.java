@@ -5,6 +5,7 @@ import akka.actor.Props;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 public class FriendActor extends AbstractActor {
     private final List<String> friends = new ArrayList<>();
@@ -56,6 +57,17 @@ public class FriendActor extends AbstractActor {
             this.friends = friends;
         }
     }
+
+
+    public static String addFriend() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Enter the username of the friend to add: ");
+        String friendName = scanner.nextLine();
+        return friendName;
+    }
+
+
+
 
     @Override
     public Receive createReceive() {

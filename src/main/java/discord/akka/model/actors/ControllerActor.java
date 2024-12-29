@@ -76,13 +76,13 @@ public class ControllerActor extends AbstractActor {
                     profileActor.tell(new ProfileActor.GetProfileMessage(currentUsername), getSelf());
                     break;
                 case 3:
-                    friendActor.tell(new FriendActor.AddFriendMessage(currentUsername, addFriend(), currentStatus),getSelf());
+                    friendActor.tell(new FriendActor.AddFriendMessage(currentUsername, FriendActor.addFriend(), currentStatus),getSelf());
                     break;
                 case 4:
                     createServer(currentUsername, currentStatus); // New
                     break;
                 case 5:
-                    initiateCall(currentUsername, currentStatus);
+                    callActor.tell(new CallActor.InitiateCallMessage(currentUsername, currentStatus), getSelf());
                     break;
                 case 6:
                     messageSomeone(currentUsername, currentStatus);
@@ -103,12 +103,12 @@ public class ControllerActor extends AbstractActor {
             loginSuccessful(currentUsername, currentStatus);
         }
     }
-    private String addFriend() {
-        Scanner scanner = new Scanner(System.in);
-        System.out.print("Enter the username of the friend to add: ");
-        String friendName = scanner.nextLine();
-        return friendName;
-    }
+
+
+
+
+
+
 
     private void createServer(String currentUsername, String currentStatus) {
         System.out.print("Enter a name for your server: ");
@@ -163,24 +163,13 @@ public class ControllerActor extends AbstractActor {
     }
 
 
-    private void initiateCall(String currentUsername, String currentStatus) {
-        System.out.println("Starting a voice/video call:");
-        System.out.print("Enter recipient's username: ");
-        String recipient = scanner.nextLine();
-        System.out.print("Enable camera (yes/no)? ");
-        boolean cameraOn = scanner.nextLine().equalsIgnoreCase("yes");
-        System.out.print("Enable microphone (yes/no)? ");
-        boolean micOn = scanner.nextLine().equalsIgnoreCase("yes");
 
-        callActor.tell(new CallActor.InitiateCallMessage(currentUsername, recipient, cameraOn, micOn, currentUsername), getSelf());
-    }
 
     private void messageSomeone(String currentUsername, String currentStatus) {
         System.out.print("Enter recipient's username: ");
         String recipient = scanner.nextLine();
         System.out.print("Enter your message: ");
         String message = scanner.nextLine();
-
         messageActor.tell(new MessageActor.SendMessage(currentUsername, recipient, message, currentStatus), getSelf());
     }
 
@@ -224,6 +213,8 @@ public class ControllerActor extends AbstractActor {
                             break;
                     }
                 })
+
+
                 .match(LoginActor.ResponseMessage.class, response -> {
                     System.out.println(response.message);
                     if (response.isSignup || !response.success) {
@@ -278,24 +269,36 @@ public class ControllerActor extends AbstractActor {
                         loginSuccessful(response.username, response.status);
                     }
                 })
+
+
+
+
+
                 .match(FriendActor.FriendResponse.class, response -> {
-                    System.out.println(response.message); // Print message about adding the friend
+                    System.out.println(response.message); // Print the response message
                     System.out.println("\n=== Updated Friends List ===");
                     if (response.updatedFriendList.isEmpty()) {
                         System.out.println("You have no friends added.");
                     } else {
                         response.updatedFriendList.forEach(friend -> System.out.println("- " + friend));
                     }
-                    loginSuccessful(response.username, response.userStatus); // Automatically return to the menu
+                    loginSuccessful(response.username, response.userStatus);
                 })
+
                 .match(ServerActor.ServerResponse.class, response -> {
                     System.out.println(response.message); // Print response message
                     loginSuccessful(response.username, response.status);
                 })
-                .match(CallActor.CallResponse.class, response -> {
-                    System.out.println(response.message);
-                    loginSuccessful(response.username, response.status); // Return to menu
+                .match(CallActor.CallDetails.class, details -> {
+                    // Log or display the call details
+                    System.out.println("Call initiated with " + details.recipient);
+                    System.out.println("Camera: " + (details.cameraOn ? "On" : "Off"));
+                    System.out.println("Microphone: " + (details.micOn ? "On" : "Off"));
+
+                    // Use the currentUsername and currentStatus from the details object
+                    loginSuccessful(details.currentUsername, details.currentStatus);
                 })
+
                 .match(MessageActor.MessageResponse.class, response -> {
                     System.out.println(response.message);
                     loginSuccessful(response.sender, response.status); // Return to menu
@@ -303,6 +306,15 @@ public class ControllerActor extends AbstractActor {
 
                 .build();
     }
+
+
+
+
+
+
+
+
+
 
     private void changeUserStatus(String currentUsername) {
         System.out.println("\nAvailable statuses: Online, Idle, Do Not Disturb, Invisible");
